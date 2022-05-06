@@ -14,6 +14,7 @@ import org.apache.flink.util.Collector;
  */
 public class Flink02_UnBounded_WC_Lambda {
     public static void main(String[] args) throws Exception {
+        System.out.println("xxxxxx");
         //1. 创建一个流的执行环境
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
