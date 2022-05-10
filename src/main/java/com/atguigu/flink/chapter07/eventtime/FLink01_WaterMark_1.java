@@ -1,28 +1,32 @@
-package com.atguigu.flink.chapter07.window;
+package com.atguigu.flink.chapter07.eventtime;
 
 import com.atguigu.flink.bean.WaterSensor;
+import com.atguigu.flink.util.AtguiguUtil;
+import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
-import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 
+import java.time.Duration;
+import java.util.List;
+
 /**
  * @Author lzc
- * @Date 2022/5/10 9:07
+ * @Date 2022/5/10 15:12
  */
-public class Flink05_Window_Old {
+public class FLink01_WaterMark_1 {
     public static void main(String[] args) {
         Configuration conf = new Configuration();
         conf.setInteger("rest.port", 2000);
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment(conf);
         env.setParallelism(1);
-        
-        
-        // 每隔5秒计算5内的水位和
+    
         env
             .socketTextStream("hadoop162", 9999)
             .map(new MapFunction<String, WaterSensor>() {
@@ -36,19 +40,33 @@ public class Flink05_Window_Old {
                     );
                 }
             })
+            .assignTimestampsAndWatermarks(
+                WatermarkStrategy
+                    .<WaterSensor>forBoundedOutOfOrderness(Duration.ofSeconds(3))
+                    .withTimestampAssigner(new SerializableTimestampAssigner<WaterSensor>() {
+                        // 返回事件时间: 必须是一个毫秒值
+                        // 水印在流中一般只加一次, recordTimestamp就是long的最小值
+                        @Override
+                        public long extractTimestamp(WaterSensor element,
+                                                     long recordTimestamp) {
+                            return element.getTs();
+                        }
+                    })
+            )
             .keyBy(WaterSensor::getId)
-            .window(TumblingProcessingTimeWindows.of(Time.seconds(5)))
+            .window(TumblingEventTimeWindows.of(Time.seconds(5)))
             .process(new ProcessWindowFunction<WaterSensor, String, String, TimeWindow>() {
                 @Override
-                public void process(String s,
-                                    Context context,
+                public void process(String key,
+                                    Context ctx,
                                     Iterable<WaterSensor> elements,
                                     Collector<String> out) throws Exception {
-        
+                    List<WaterSensor> list = AtguiguUtil.toList(elements);
+                
+                    out.collect(ctx.window() + "   " + list);
                 }
             })
             .print();
-        
         
         try {
             env.execute();
@@ -57,20 +75,3 @@ public class Flink05_Window_Old {
         }
     }
 }
-/*
-家窗口的的目的是对窗口内的元素进行计算处理,
-窗口处理函数
-
-
-1. 增量聚合
-    简单
-        sum, max, min, maxBy, minBy
-    复杂
-        reduce
-        
-        aggregate
-
-2. 全量聚合
- 
-
- */
