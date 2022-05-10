@@ -60,6 +60,7 @@ public class Flink04_Window_Process_2 {
         aggregate
 
 2. 全量聚合
+    process
  
 
  */
