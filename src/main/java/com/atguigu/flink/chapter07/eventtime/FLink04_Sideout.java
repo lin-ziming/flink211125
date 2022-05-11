@@ -6,12 +6,14 @@ import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
+import org.apache.flink.util.OutputTag;
 
 import java.time.Duration;
 import java.util.List;
@@ -20,18 +22,19 @@ import java.util.List;
  * @Author lzc
  * @Date 2022/5/10 15:12
  */
-public class FLink01_WaterMark_1 {
+public class FLink04_Sideout {
     public static void main(String[] args) {
         Configuration conf = new Configuration();
         conf.setInteger("rest.port", 2000);
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment(conf);
-        env.setParallelism(2);
-        
-        env
+        env.setParallelism(1);
+    
+        SingleOutputStreamOperator<String> main = env
             .socketTextStream("hadoop162", 9999)
             .map(new MapFunction<String, WaterSensor>() {
                 @Override
                 public WaterSensor map(String value) throws Exception {
+                
                     String[] data = value.split(",");
                     return new WaterSensor(
                         data[0],
@@ -52,11 +55,10 @@ public class FLink01_WaterMark_1 {
                             return element.getTs();
                         }
                     })
-                    // 如果生成水印算子的某个并行度数据5s没有更新,则水印的传递以其他并行度为准
-                    .withIdleness(Duration.ofSeconds(5))
             )
             .keyBy(WaterSensor::getId)
             .window(TumblingEventTimeWindows.of(Time.seconds(5)))
+            .sideOutputLateData(new OutputTag<WaterSensor>("late") {})
             .process(new ProcessWindowFunction<WaterSensor, String, String, TimeWindow>() {
                 @Override
                 public void process(String key,
@@ -64,12 +66,14 @@ public class FLink01_WaterMark_1 {
                                     Iterable<WaterSensor> elements,
                                     Collector<String> out) throws Exception {
                     List<WaterSensor> list = AtguiguUtil.toList(elements);
-                    
+                
                     out.collect(ctx.window() + "   " + list);
                 }
-            })
-            .print();
-        
+            });
+    
+        main.print("main");
+        main.getSideOutput(new OutputTag<WaterSensor>("late") {}).print("late");
+    
         try {
             env.execute();
         } catch (Exception e) {

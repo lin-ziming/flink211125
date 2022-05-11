@@ -20,18 +20,19 @@ import java.util.List;
  * @Author lzc
  * @Date 2022/5/10 15:12
  */
-public class FLink01_WaterMark_1 {
+public class FLink03_WaterMark_3 {
     public static void main(String[] args) {
         Configuration conf = new Configuration();
         conf.setInteger("rest.port", 2000);
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment(conf);
-        env.setParallelism(2);
-        
+        env.setParallelism(1);
+    
         env
             .socketTextStream("hadoop162", 9999)
             .map(new MapFunction<String, WaterSensor>() {
                 @Override
                 public WaterSensor map(String value) throws Exception {
+                    
                     String[] data = value.split(",");
                     return new WaterSensor(
                         data[0],
@@ -52,11 +53,12 @@ public class FLink01_WaterMark_1 {
                             return element.getTs();
                         }
                     })
-                    // 如果生成水印算子的某个并行度数据5s没有更新,则水印的传递以其他并行度为准
-                    .withIdleness(Duration.ofSeconds(5))
             )
             .keyBy(WaterSensor::getId)
             .window(TumblingEventTimeWindows.of(Time.seconds(5)))
+            // 当到了窗口的关闭时间, 先对窗口内的元素进行计算,但是暂时不关闭窗口
+            // 在允许的时间范围内, 如果还有属于这个窗口的数据,则继续进入窗口计算.
+            .allowedLateness(Time.seconds(3))
             .process(new ProcessWindowFunction<WaterSensor, String, String, TimeWindow>() {
                 @Override
                 public void process(String key,
@@ -64,7 +66,7 @@ public class FLink01_WaterMark_1 {
                                     Iterable<WaterSensor> elements,
                                     Collector<String> out) throws Exception {
                     List<WaterSensor> list = AtguiguUtil.toList(elements);
-                    
+                
                     out.collect(ctx.window() + "   " + list);
                 }
             })
