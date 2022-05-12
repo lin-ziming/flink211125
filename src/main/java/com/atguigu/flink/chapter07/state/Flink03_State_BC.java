@@ -30,6 +30,7 @@ public class Flink03_State_BC {
         // 2. 让数据流connect 广播流
         BroadcastConnectedStream<String, String> stream = dataStream.connect(bcState);
         
+        
         stream
             .process(new BroadcastProcessFunction<String, String, String>() {
                 
