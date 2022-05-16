@@ -49,7 +49,7 @@ public class Flink04_TableAgg {
             .print();
         
         // 3. 在sql中使用
-        
+        // 目前不支持
         
     }
     
