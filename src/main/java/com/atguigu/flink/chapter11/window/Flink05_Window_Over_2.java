@@ -55,7 +55,7 @@ public class Flink05_Window_Over_2 {
                           " id, ts, vc, " +
                           " sum(vc) over w sum_vc, " +
                           " max(vc) over w max_vc " +
-                          "from sensor " +
+                          "from default_catalog.default_database.sensor " +
                           "window w as(partition by id order by ts rows between unbounded preceding and current row)").execute().print();
         
         
