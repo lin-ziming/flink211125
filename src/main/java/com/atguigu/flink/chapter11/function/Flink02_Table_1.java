@@ -13,7 +13,7 @@ import org.apache.flink.table.functions.TableFunction;
  * @Author lzc
  * @Date 2022/5/16 10:18
  */
-public class Flink02_Table {
+public class Flink02_Table_1 {
     public static void main(String[] args) {
         Configuration conf = new Configuration();
         conf.setInteger("rest.port", 2000);
@@ -38,46 +38,32 @@ public class Flink02_Table {
         // 2.1 使用内联的方式
         // 2.2先注册再使用
         tEnv.createFunction("my_split", MySplit.class);
-       /* table
-            .joinLateral(Expressions.call("my_split", $("id")))
+        /*table
+            .leftOuterJoinLateral(Expressions.call("my_split", $("id")))
             .select($("id"), $("word"), $("len"))
             .execute()
             .print();*/
         // 3. 在sql中使用
-        // select .. from a join b on a.id=b.id
-        // select .. from a,b where a.id=b.id
-        
-        /*tEnv
-            .sqlQuery("select " +
-                          " id," +
-                          " word," +
-                          " len " +
-                          "from sensor " +
-                          "join lateral table(my_split(id)) on true")
-            .execute()
-            .print();*/
+      
+     
         tEnv
             .sqlQuery("select " +
                           " id," +
-                          " word," +
-                          " len " +
+                          " a," +
+                          " b " +
                           "from sensor " +
-                          ", lateral table(my_split(id)) ")
+                          "left join lateral table(my_split(id)) as t(a, b) on true")
             .execute()
             .print();
     }
-    
-   /* @FunctionHint(output = @DataTypeHint("row<word string, len int>"))
-    public static class MySplit extends TableFunction<Row> {
-        public void eval(String line){
-            // collect方法调用几次, 就表示这个line会制成几行
-            for (String word : line.split(" ")) {
-                collect(Row.of(word, word.length()));
-            }
-        }
-    }*/
+
    public static class MySplit extends TableFunction<WordLen> {
        public void eval(String line){
+    
+           if (line.contains("hello")) {
+               return;
+           }
+           
            // collect方法调用几次, 就表示这个line会制成几行
            for (String word : line.split(" ")) {
                collect(new WordLen(word, word.length()));
@@ -85,15 +71,3 @@ public class Flink02_Table {
        }
    }
 }
-/*
-hello  atguigu
-
-        hello  5
-        atguigu 7
-hello  atguigu world
-        hello  5
-        atguigu 7
-        world 5
-        
-   ....
- */
