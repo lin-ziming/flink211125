@@ -63,6 +63,7 @@ public class Flink04_High_AdsClick {
                     // 如果判断跨天
                     // 使用一个状态记录昨天的日志, 每来一条数据就与这个日期进行比较, 如果相等, 证明还在同一天, 如果不等, 跨天.
                     String yesterday = yesterdayState.value();
+                    //SimpleDateFormat有多线程安全问题
                     String today = new SimpleDateFormat("yyyy-MM-dd").format(new Date(value.getTimestamp()));
                     if (!today.equals(yesterday)) {
                         
@@ -87,6 +88,7 @@ public class Flink04_High_AdsClick {
                     
                     String msg = value.getUserId() + " 对广告: " + value.getAdsId() + "的点击量是: " + clickCount;
                     if (clickCount > 99) {
+                        //这里的条件不能和上面的if写在一起，二者并不等价
                         if (alreadyBlackListState.value() == null) {
                             
                             ctx.output(new OutputTag<String>("blackList") {}, msg + " 超过阈值, 加入黑名单");
