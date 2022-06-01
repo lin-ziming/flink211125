@@ -10,6 +10,7 @@ import org.apache.flink.util.Collector;
 import org.apache.flink.util.OutputTag;
 
 /**
+ * 用侧输出流实现分流，必须用process方法
  * @Author lzc
  * @Date 2022/5/10 15:12
  */
