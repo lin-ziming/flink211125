@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.util.List;
 
 /**
+ * 用侧输出流承载迟到数据
  * @Author lzc
  * @Date 2022/5/10 15:12
  */
@@ -58,7 +59,7 @@ public class FLink04_Sideout {
             )
             .keyBy(WaterSensor::getId)
             .window(TumblingEventTimeWindows.of(Time.seconds(5)))
-            .sideOutputLateData(new OutputTag<WaterSensor>("late") {})
+            .sideOutputLateData(new OutputTag<WaterSensor>("late") {}) //new OutputTag的时候后面必须加个{}做成匿名内部类，才能保留泛型信息
             .process(new ProcessWindowFunction<WaterSensor, String, String, TimeWindow>() {
                 @Override
                 public void process(String key,
@@ -72,6 +73,7 @@ public class FLink04_Sideout {
             });
     
         main.print("main");
+        //new OutputTag的时候后面必须加个{}做成匿名内部类，才能保留泛型信息
         main.getSideOutput(new OutputTag<WaterSensor>("late") {}).print("late");
     
         try {
